@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8' />
+  <title>Mapbox GeoJSON Layer</title>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <script src='https://api.mapbox.com/mapbox-gl-js/v2.4.1/mapbox-gl.js'></script>
+  <link href='https://api.mapbox.com/mapbox-gl-js/v2.4.1/mapbox-gl.css' rel='stylesheet' />
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+  </style>
+</head>
+<body>
+  <div id='map'></div>
+
+  <script>
+    mapboxgl.accessToken = 'pk.eyJ1IjoiamFtZXMtbWNrZW56aWUtYXNsIiwiYSI6ImNsaHBtYXo1aDA4MWczZ281bXJhbnc0dGMifQ.8pxJxAy6HV0CQfuibaIFmw';
+
+    var map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/satellite-streets-v12',
+      center: [171.108,-42.568],
+      zoom: 7.2
+    });
+
+    map.on('load', function () {
+      // Add your sources and layers here...
+
+      map.addSource('ProjectArea', {
+        type: 'geojson',
+        data: 'Data/WestCoast_Rural_2024_2025 - Project_Area.geojson'
+      });
+
+      map.addLayer({
+        id: 'ProjectLayer',
+        type: 'fill',
+        source: 'ProjectArea',
+        paint: {
+          'fill-color': 'Orange',
+          'fill-opacity': 0.5
+        }
+      });
+
+      map.addSource('CoverageSource', {
+        type: 'geojson',
+        data: 'Data/WestCoast_Rural_2024_2025 - Captured_Area.geojson'
+      });
+
+      map.addLayer({
+        id: 'CoverageLayer',
+        type: 'fill',
+        source: 'CoverageSource',
+        paint: {
+          'fill-color': '#FF0000',
+          'fill-opacity': 0.5
+        }
+      });
+
+      map.addSource('ProjectCentre', {
+        type: 'geojson',
+        data: 'Data/WestCoast_Rural_2024_2025 - Imagery_Centres.geojson'
+      });
+      
+
+      map.addLayer({
+        id: 'PCentre',
+        type: 'circle',
+        source: 'ProjectCentre',
+        paint: {
+				'circle-radius': [
+                                'interpolate',
+                                ['exponential', 1.10],
+                                ['zoom'],
+                                0,
+                                0.5,
+                                19,
+                                15
+                                ],
+                    'circle-color': 'white'
+            }
+      });
+      map.on('idle', function () {
+        const featuresPCentre = map.queryRenderedFeatures({ layers: ['PCentre'] });
+        const featuresCoverage = map.queryRenderedFeatures({ layers: ['CoverageLayer'] });
+        const featuresProject = map.queryRenderedFeatures({ layers: ['ProjectLayer'] });
+
+        if (featuresPCentre.length > 0 && featuresProject.length > 0) {
+          const featurePCentre = featuresPCentre[0];
+          const featureCoverage = featuresCoverage[0];
+          const featureProject = featuresProject[0];
+
+          const coordinates = featurePCentre.geometry.coordinates.slice();
+          const description = "<span style='color: #7FBA00;font-size: 14px;'><b>" + featureProject.properties.Proj_Name + "</b></br>" +
+                              "<span style='color: black;'><b>Project Code: </b>" + featurePCentre.properties.Project + "</br>" +
+                              "<b>Survey Type: </b>" + featureProject.properties.Survey_Typ + "</br>" +
+                              "<b>Imagery GSD: </b>" + featurePCentre.properties.OrthoGSD_m + "</br>" +
+                              //"<b>Point Density: </b>" + featurePCentre.properties.Point_Dens + "</br>" +
+                              "<b>Area: </b>" + (featurePCentre.properties.Area).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })+ " km²</br>" +
+                              "<b>Captured Area: </b>" + (featureCoverage.properties.Area).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + " km²</br>" +
+                              "<b>Coverage To Date: </b>" + featureCoverage.properties.Percentage_Coverage + "%</b></br>";
+
+          var popupContent = document.createElement('div');
+          popupContent.innerHTML = description;
+
+          var popup = new mapboxgl.Popup({ closeOnClick: true })
+            .setLngLat(coordinates)
+            .setDOMContent(popupContent)
+            .addTo(map);
+        }
+      });
+
+      map.on('mouseenter', 'PCentre', function () {
+        map.getCanvas().style.cursor = 'pointer';
+      });
+
+      map.on('mouseleave', 'PCentre', function () {
+        map.getCanvas().style.cursor = '';
+      });
+    });
+
+ 
+  </script>
+</body>
+</html>
